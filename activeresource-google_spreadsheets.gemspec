@@ -8,9 +8,9 @@ Gem::Specification.new do |spec|
   spec.version       = GoogleSpreadsheets::VERSION
   spec.authors       = ["Chihiro Ito", "Toru KAWAMURA"]
   spec.email         = ["tkawa@4bit.net"]
-  spec.description   = %q{TODO: Write a gem description}
-  spec.summary       = %q{TODO: Write a gem summary}
-  spec.homepage      = ""
+  spec.description   = %q{Google Spreadsheets accessor with ActiveResource}
+  spec.summary       = %q{Google Spreadsheets accessor with ActiveResource}
+  spec.homepage      = "https://github.com/tkawa/activeresource-google_spreadsheets"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)
