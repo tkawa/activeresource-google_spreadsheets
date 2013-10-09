@@ -1,12 +1,14 @@
-# GoogleSpreadsheets
+# ActiveResource GoogleSpreadsheets
 
-TODO: Write a gem description
+Google Spreadsheets accessor with ActiveResource
+
+http://webos-goodies.jp/archives/active_resource_google_spreadsheets_data_api.html
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
-    gem 'google_spreadsheets'
+    gem 'activeresource-google_spreadsheets'
 
 And then execute:
 
@@ -14,7 +16,7 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install google_spreadsheets
+    $ gem install activeresource-google_spreadsheets
 
 ## Usage
 
