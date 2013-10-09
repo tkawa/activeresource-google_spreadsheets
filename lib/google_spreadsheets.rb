@@ -1,5 +1,4 @@
-# http://webos-goodies.googlecode.com/svn/trunk/blog/articles/active_resource_google_spreadsheets_data_api/ares_google_spreadsheets.rb
-require 'rubygems'
+require 'google_spreadsheets/version'
 require 'active_support'
 require 'active_resource'
 require 'time'
@@ -22,7 +21,7 @@ module GoogleSpreadsheets
 
   class Connection < ActiveResource::Connection
     DEBUG = false
-    def authorization_header
+    def authorization_header(http_method, uri)
       if @user && @password && !@token
         email            = CGI.escape(@user)
         password         = CGI.escape(@password)
@@ -125,7 +124,7 @@ module GoogleSpreadsheets
   class Spreadsheet < Base
     @connection = nil # avoid using base class's connection.
     self.prefix = '/private/full/'
-    class << self; attr_accessor_with_default(:collection_name) { 'spreadsheets' } end
+    def self.collection_name; 'spreadsheets' end
   end
 
   class Worksheet < Base
@@ -144,12 +143,15 @@ module GoogleSpreadsheets
     @connection = nil # avoid using base class's connection.
     self.prefix = '/:document_id/:visibility/:projection/'
     self.format = Format.new
-    class << self; attr_accessor_with_default(:collection_name) { 'worksheets' } end
+    def self.collection_name; 'worksheets' end
   end
 
   class List < Base
     class Format < GDataFormat
-      def decode(xml) super(xml.gsub(/<(\/?)gsx:/u, '<\1gsx_')) end
+      def decode(xml)
+        xml.force_encoding('UTF-8') # cf. http://d.hatena.ne.jp/kitamomonga/20101218/ruby_19_net_http_encoding
+        super(xml.gsub(/<(\/?)gsx:/u, '<\1gsx_'))
+      end
       def encode(hash, options = {})
         super(Hash[*hash.map{|p| /^gsx_(.+)/ === p[0] ? ['gsx:'+$1, p[1]] : nil }.compact.flatten],
               { :namespaces => { 'gsx' => 'http://schemas.google.com/spreadsheets/2006/extended' } })
@@ -158,7 +160,7 @@ module GoogleSpreadsheets
     @connection = nil # avoid using base class's connection.
     self.prefix = '/:document_id/:worksheet_id/:visibility/:projection/'
     self.format = Format.new
-    class << self; attr_accessor_with_default(:collection_name) { 'list' } end
+    def self.collection_name; 'list' end
   end
 
 end
