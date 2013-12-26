@@ -33,6 +33,12 @@ module GoogleSpreadsheets
 
     def destroy() connection.delete(edit_path, self.class.headers) end
 
+    # Fix for degradation
+    # cf. https://github.com/rails/activeresource/pull/94
+    def encode(options={})
+      self.class.format.encode(attributes, {:root => self.class.element_name}.merge(options))
+    end
+
     protected
 
     def update
