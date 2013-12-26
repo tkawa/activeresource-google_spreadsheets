@@ -36,7 +36,7 @@ module GoogleSpreadsheets
     protected
 
     def update
-      returning connection.put(edit_path, encode, self.class.headers) do |response|
+      connection.put(edit_path, encode, self.class.headers).tap do |response|
         load_attributes_from_response(response)
       end
     end
