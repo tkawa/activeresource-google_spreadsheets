@@ -1,3 +1,5 @@
+require 'rexml/document'
+
 module GoogleSpreadsheets
   class GDataFormat
     def extension() '' end
