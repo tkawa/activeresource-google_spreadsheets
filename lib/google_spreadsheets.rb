@@ -14,6 +14,9 @@ module GoogleSpreadsheets
   autoload :Worksheet
   autoload :List
 
+  autoload :Enhanced
+  autoload :LinkRelations
+
   class BaseError < StandardError
     DefaultMessage = nil
     def initialize(message=nil)
