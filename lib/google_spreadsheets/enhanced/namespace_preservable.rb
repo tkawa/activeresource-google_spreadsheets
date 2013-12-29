@@ -80,6 +80,16 @@ module GoogleSpreadsheets
         self.format = Format.new
       end
 
+      module ClassMethods
+        def attr_aliases(aliases)
+          @_attr_aliases = aliases
+          aliases.each do |new_attr, original_attr|
+            define_method(new_attr) {|*args| send(original_attr, *args) }
+            define_method("#{new_attr}=") {|*args| send("#{original_attr}=", *args) }
+          end
+        end
+      end
+
       def respond_to?(method, include_priv = false)
         method_name = method.to_s
         ((matches = method_name.match(/(=|\?)$/)) && attributes.include?("gsx:#{matches.pre_match}")) ||
