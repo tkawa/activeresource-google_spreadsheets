@@ -1,24 +1,24 @@
 module GoogleSpreadsheets
   module LinkRelations
     module Builder
-      class HasLinkOfMany < ActiveResource::Associations::Builder::Association
-        self.macro = :has_link_of_many
+      class LinksToMany < ActiveResource::Associations::Builder::Association
+        self.macro = :links_to_many
         self.valid_options = [:class_name, :rel]
 
         def build
           validate_options
           model.create_reflection(self.class.macro, name, options).tap do |reflection|
-            model.defines_has_link_of_many_finder_method(reflection.name, reflection.options[:rel], reflection.klass)
+            model.defines_links_to_many_finder_method(reflection.name, reflection.options[:rel], reflection.klass)
           end
         end
       end
     end
 
-    def has_link_of_many(name, options = {})
-      Builder::HasLinkOfMany.build(self, name, options)
+    def links_to_many(name, options = {})
+      Builder::LinksToMany.build(self, name, options)
     end
 
-    def defines_has_link_of_many_finder_method(method_name, relation_name, association_model)
+    def defines_links_to_many_finder_method(method_name, relation_name, association_model)
       ivar_name = :"@#{method_name}"
 
       define_method(method_name) do
