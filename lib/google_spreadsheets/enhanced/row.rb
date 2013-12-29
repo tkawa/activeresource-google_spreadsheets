@@ -1,7 +1,7 @@
 module GoogleSpreadsheets
   module Enhanced
     class Row < GoogleSpreadsheets::List
-      extend GoogleSpreadsheets::LinkRelations
+      include GoogleSpreadsheets::LinkRelations
       include NamespacePreservable
 
       self.collection_parser = Collection
