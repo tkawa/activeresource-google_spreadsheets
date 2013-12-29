@@ -77,17 +77,30 @@ module GoogleSpreadsheets
       end
 
       included do
+        class_attribute :_attr_aliases
         self.format = Format.new
       end
 
       module ClassMethods
         def attr_aliases(aliases)
-          @_attr_aliases = aliases
+          self._attr_aliases = aliases
           aliases.each do |new_attr, original_attr|
             define_method(new_attr) {|*args| send(original_attr, *args) }
             define_method("#{new_attr}=") {|*args| send("#{original_attr}=", *args) }
           end
         end
+      end
+
+      def aliased_attributes
+        aliased = _attr_aliases.invert
+        gsx_attributes = self.attributes.keys.map do |attr|
+          if matches = attr.match(/^(gsx:)/)
+            (aliased[matches.post_match] || matches.post_match).to_s
+          else
+            nil
+          end
+        end.compact
+        (self.class.known_attributes + gsx_attributes).uniq
       end
 
       def respond_to?(method, include_priv = false)

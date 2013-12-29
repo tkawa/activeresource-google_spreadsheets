@@ -5,5 +5,6 @@ module GoogleSpreadsheets
     autoload :Row,         'google_spreadsheets/enhanced/row'
     autoload :Collection,  'google_spreadsheets/enhanced/collection'
     autoload :NamespacePreservable, 'google_spreadsheets/enhanced/namespace_preservable'
+    autoload :Synchronizer, 'google_spreadsheets/enhanced/synchronizer'
   end
 end
