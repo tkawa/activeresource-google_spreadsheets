@@ -1,5 +1,5 @@
 require 'google_spreadsheets/version'
-require 'active_support'
+require 'active_support/all'
 require 'active_resource'
 require 'time'
 require 'erb'
