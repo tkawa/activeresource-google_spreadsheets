@@ -4,6 +4,7 @@ module GoogleSpreadsheets
 
     class << self
       DEFAULT_CLASS_NAME_MAPPINGS = {
+        'http://schemas.google.com/spreadsheets/2006#spreadsheet'    => 'GoogleSpreadsheets::Enhanced::Spreadsheet',
         'http://schemas.google.com/spreadsheets/2006#worksheetsfeed' => 'GoogleSpreadsheets::Enhanced::Worksheet',
         'http://schemas.google.com/spreadsheets/2006#listfeed'       => 'GoogleSpreadsheets::Enhanced::Row'
       }
@@ -63,8 +64,13 @@ module GoogleSpreadsheets
     class LinkRelationReflection < ActiveResource::Reflection::AssociationReflection
       private
       def derive_class_name
-        GoogleSpreadsheets::LinkRelations.class_name_mappings[options[:rel]] ||
-          (options[:class_name] ? options[:class_name].to_s : name.to_s).classify
+        if options[:class_name]
+          options[:class_name].to_s
+        elsif options[:rel]
+          GoogleSpreadsheets::LinkRelations.class_name_mappings.fetch(options[:rel])
+        else
+          name.to_s
+        end.classify
       end
     end
   end

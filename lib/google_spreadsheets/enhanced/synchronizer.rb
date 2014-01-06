@@ -11,8 +11,9 @@ module GoogleSpreadsheets
       def sync_with(rows_name, options)
         options.assert_valid_keys(:spreadsheet_id, :worksheet_title, :class_name)
         options[:worksheet_title] ||= rows_name.to_s
+        spreadsheet_class_name = LinkRelations.class_name_mappings['http://schemas.google.com/spreadsheets/2006#spreadsheet'].classify
         define_singleton_method(rows_name) do
-          @worksheet ||= GoogleSpreadsheets::Enhanced::Spreadsheet
+          @worksheet ||= spreadsheet_class_name.constantize
                            .find(options[:spreadsheet_id])
                            .worksheets
                            .find_by!(title: options[:worksheet_title])
