@@ -20,33 +20,60 @@ module GoogleSpreadsheets
           @worksheet.rows
         end
 
-        # import all
+        # inbound sync all (import)
         define_singleton_method("sync_with_#{rows_name}") do
-          rows = send(rows_name)
-          rows.each do |row|
+          rows = send(rows_name) # FIXME: force reload
+          records = rows.map do |row|
             record = self.find_or_initialize_by(id: row.id)
             row.aliased_attributes.each do |attr|
               record.send("#{attr}=", row.send(attr))
             end
-            record.instance_variable_set(:@_skip_outbound_sync, true)
-            record.save
-            record.remove_instance_variable(:@_skip_outbound_sync)
+            record
+          end
+          skipping_outbound_sync_of(records) do |records_with_skipped_outbound|
+            transaction_if_possible do
+              records_with_skipped_outbound.each(&:save)
+            end
           end
         end
 
-        # export one
+        # outbound sync one (export)
         define_method("sync_#{rows_name.to_s.singularize}") do
-          return if @_skip_outbound_sync
+          return if @_skip_outbound_sync.tapp
           row = self.class.send(rows_name).find(self.id)
           if destroyed?
             row.destroy
           else
             # TODO: separate by AttributeAssignment
-            self.attributes_before_type_cast.each do |attr, value|
+            row.aliased_attributes.each do |attr|
+              value = self.attributes_before_type_cast[attr] || self.send(attr)
               row.send("#{attr}=", value)
             end
             row.save
           end
+        end
+      end
+
+      private
+      def transaction_if_possible(origin = self, &block)
+        if origin.respond_to?(:transaction)
+          origin.transaction(&block)
+        elsif defined?(ActiveRecord)
+          ActiveRecord::Base.transaction(&block)
+        else
+          yield # no transaction
+        end
+      end
+
+      def skipping_outbound_sync_of(records)
+        records = Array(records) unless records.is_a?(Enumerable)
+        records.each do |record|
+          record.instance_variable_set(:@_skip_outbound_sync, true)
+        end
+        yield records
+      ensure
+        records.each do |record|
+          record.remove_instance_variable(:@_skip_outbound_sync) if record.instance_variable_defined?(:@_skip_outbound_sync)
         end
       end
     end
