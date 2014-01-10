@@ -3,6 +3,9 @@ module GoogleSpreadsheets
     module Syncing
       extend ActiveSupport::Concern
 
+      REL_NAME_SPREADSHEET = 'http://schemas.google.com/spreadsheets/2006#spreadsheet'
+      REL_NAME_ROW         = 'http://schemas.google.com/spreadsheets/2006#listfeed'
+
       included do
         class_attribute :synchronizers
         self.synchronizers = {}
@@ -18,7 +21,8 @@ module GoogleSpreadsheets
         def sync_with(rows_name, options)
           options.assert_valid_keys(:spreadsheet_id, :worksheet_title, :class_name)
           options[:worksheet_title] ||= rows_name.to_s
-          synchronizer = Synchronizer.new(self, options[:spreadsheet_id], options[:worksheet_title])
+          options[:class_name] ||= rows_name.to_s.classify
+          synchronizer = Synchronizer.new(self, options[:class_name].safe_constantize, options[:spreadsheet_id], options[:worksheet_title])
           self.synchronizers.merge!(rows_name => synchronizer)
 
           # rows accessor
@@ -42,29 +46,37 @@ module GoogleSpreadsheets
       end
 
       class Synchronizer
-        attr_reader :klass, :spreadsheet_id, :worksheet_title
+        attr_reader :record_class, :row_class, :spreadsheet_id, :worksheet_title
 
-        def initialize(klass, spreadsheet_id, worksheet_title)
-          @klass = klass
+        def initialize(record_class, row_class, spreadsheet_id, worksheet_title)
+          @record_class = record_class
+          @row_class = row_class || default_class_for(REL_NAME_ROW)
           @spreadsheet_id = spreadsheet_id
           @worksheet_title = worksheet_title
         end
 
         def all_rows
-          worksheet.rows
+          reflections = worksheet.class.reflections.values.find_all{|ref| ref.is_a?(LinkRelations::LinkRelationReflection) }
+          if reflection = reflections.find{|ref| ref.klass == row_class }
+            worksheet.send(reflection.name)
+          elsif reflection = reflections.find{|ref| ref.options[:rel] == REL_NAME_ROW }
+            worksheet.send(reflection.name, as: row_class.to_s)
+          else
+            raise "Reflection for #{row_class.to_s} not found."
+          end
         end
 
         def sync_with_rows
           reset
           records = all_rows.map do |row|
-            @klass.find_or_initialize_by(id: row.id).tap do |record|
+            record_class.find_or_initialize_by(id: row.id).tap do |record|
               row.aliased_attributes.each do |attr|
                 record.send("#{attr}=", row.send(attr))
               end
             end
           end
           skipping_outbound_sync_of(records) do |records_with_skipped_outbound|
-            transaction_if_possible(@klass) do
+            transaction_if_possible(record_class) do
               records_with_skipped_outbound.each(&:save)
             end
           end
@@ -88,10 +100,10 @@ module GoogleSpreadsheets
         end
 
         def worksheet
-          @worksheet ||= spreadsheet_class_name.constantize
-                           .find(@spreadsheet_id)
+          @worksheet ||= default_class_for(REL_NAME_SPREADSHEET)
+                           .find(spreadsheet_id)
                            .worksheets
-                           .find_by!(title: @worksheet_title)
+                           .find_by!(title: worksheet_title)
         end
 
         def reset
@@ -100,8 +112,8 @@ module GoogleSpreadsheets
         end
 
         private
-        def spreadsheet_class_name(rel_name = 'http://schemas.google.com/spreadsheets/2006#spreadsheet')
-          LinkRelations.class_name_mappings[rel_name].classify
+        def default_class_for(rel_name)
+          LinkRelations.class_name_mappings[rel_name].classify.constantize
         end
 
         def transaction_if_possible(origin = self, &block)

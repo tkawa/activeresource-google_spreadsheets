@@ -36,15 +36,17 @@ module GoogleSpreadsheets
       def defines_links_to_many_finder_method(method_name, relation_name, association_model)
         ivar_name = :"@#{method_name}"
 
-        define_method(method_name) do
+        define_method(method_name) do |options = {}|
+          options.assert_valid_keys(:as)
           if instance_variable_defined?(ivar_name)
             instance_variable_get(ivar_name)
           elsif attributes.include?(method_name)
             attributes[method_name]
           else
-            link = self.link.find{|l| l.rel ==  relation_name }
+            model = options[:as].try{|as| as.to_s.safe_constantize } || association_model
+            link = self.link.find{|l| l.rel == relation_name }
             path = link.href.slice(%r|^https://spreadsheets\.google\.com(/.*)|, 1)
-            instance_variable_set(ivar_name, association_model.find(:all, from: path))
+            instance_variable_set(ivar_name, model.find(:all, from: path))
           end
         end
       end
