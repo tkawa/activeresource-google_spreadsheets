@@ -1,5 +1,3 @@
-require 'nokogiri'
-
 module GoogleSpreadsheets
   module Enhanced
     module NamespacePreservable
@@ -22,57 +20,14 @@ module GoogleSpreadsheets
                 { :namespaces => { 'gsx' => 'http://schemas.google.com/spreadsheets/2006/extended' } })
         end
 
-        private
-
-        # convert to Hash from XML including namespace
-        # https://gist.github.com/baroquebobcat/1603671
-        def hash_from_xml_with_namespace(xml_io)
-          begin
-            result = Nokogiri::XML(xml_io)
-            { result.root.name => xml_node_to_hash(result.root) }
-          rescue Exception => e
-            # raise your custom exception here
-            raise
-          end
-        end
-
-        def xml_node_to_hash(node)
-          # If we are at the root of the document, start the hash
-          if node.element?
-            result_hash = {}
-
-            node.attributes.each do |key, attr|
-              result_hash[attr.namespaced_name] = prepare(attr.value)
-            end
-
-            node.children.each do |child|
-              result = xml_node_to_hash(child)
-              if child.is_a? Nokogiri::XML::Text
-                unless child.next_sibling || child.previous_sibling
-                  return prepare(result)
-                end
-              elsif result_hash[child_name = child.namespaced_name]
-                result_hash[child_name] = [result_hash[child_name]] unless result_hash[child_name].is_a?(Object::Array)
-                result_hash[child_name] << prepare(result)
-              else
-                result_hash[child_name] = prepare(result)
-              end
-            end
-
-            result_hash
-          else
-            prepare(node.content.to_s)
-          end
-        end
-
-        def prepare(data)
-          if data.is_a?(String) && data.to_i.to_s == data
-            data.to_i
-          elsif data == {}
-            ''
-          else
-            data
-          end
+        begin
+          require 'nokogiri'
+          require 'google_spreadsheets/enhanced/namespace_preservable/nokogiri_parser'
+          include NokogiriParser
+        rescue LoadError => e
+          $stderr.puts "You don't have nokogiri installed in your application, so this runs with rexml. If you want to use nokogiri, please add it to your Gemfile and run bundle install"
+          require 'google_spreadsheets/enhanced/namespace_preservable/rexml_parser'
+          include RexmlParser
         end
       end
 
@@ -124,11 +79,5 @@ module GoogleSpreadsheets
         end
       end
     end
-  end
-end
-
-class Nokogiri::XML::Node
-  def namespaced_name
-    (namespace.try(:prefix).present? ? "#{namespace.prefix}:" : '') + name
   end
 end
