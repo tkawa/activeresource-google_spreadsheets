@@ -9,13 +9,14 @@ module GoogleSpreadsheets
           { result.root.name => xml_node_to_hash(result.root) }
         end
 
+        private
         def xml_node_to_hash(node)
           # If we are at the root of the document, start the hash
           if node.element?
             result_hash = {}
 
             node.attributes.each do |key, attr|
-              result_hash[attr.namespaced_name] = prepare(attr.value)
+              result_hash[namespaced_name_from_node(attr)] = prepare(attr.value)
             end
 
             node.children.each do |child|
@@ -24,7 +25,7 @@ module GoogleSpreadsheets
                 unless child.next_sibling || child.previous_sibling
                   return prepare(result)
                 end
-              elsif result_hash[child_name = child.namespaced_name]
+              elsif result_hash[child_name = namespaced_name_from_node(child)]
                 result_hash[child_name] = [result_hash[child_name]] unless result_hash[child_name].is_a?(::Array)
                 result_hash[child_name] << prepare(result)
               else
@@ -48,13 +49,10 @@ module GoogleSpreadsheets
           end
         end
 
+        def namespaced_name_from_node(node)
+          (node.namespace.try(:prefix).present? ? "#{node.namespace.prefix}:" : '') + node.name
+        end
       end
     end
-  end
-end
-
-class Nokogiri::XML::Node
-  def namespaced_name
-    (namespace.try(:prefix).present? ? "#{namespace.prefix}:" : '') + name
   end
 end

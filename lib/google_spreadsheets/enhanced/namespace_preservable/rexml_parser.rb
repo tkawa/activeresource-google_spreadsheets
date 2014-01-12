@@ -9,6 +9,7 @@ module GoogleSpreadsheets
           { rexml.root.name => xml_node_to_hash(rexml.root) }
         end
 
+        private
         def xml_node_to_hash(node)
           if node.node_type == :element
             result_hash = {}
