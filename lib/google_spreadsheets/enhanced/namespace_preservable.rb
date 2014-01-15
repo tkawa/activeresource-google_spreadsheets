@@ -33,12 +33,13 @@ module GoogleSpreadsheets
 
       included do
         class_attribute :_attr_aliases
+        self._attr_aliases = {}
         self.format = Format.new
       end
 
       module ClassMethods
         def attr_aliases(aliases)
-          self._attr_aliases = aliases
+          self._attr_aliases.merge!(aliases)
           aliases.each do |new_attr, original_attr|
             define_method(new_attr) {|*args| send(original_attr, *args) }
             define_method("#{new_attr}=") {|*args| send("#{original_attr}=", *args) }
