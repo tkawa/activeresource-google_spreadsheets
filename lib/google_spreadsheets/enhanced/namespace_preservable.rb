@@ -34,6 +34,8 @@ module GoogleSpreadsheets
       included do
         class_attribute :_attr_aliases
         self._attr_aliases = {}
+        class_attribute :_ignore_attributes
+        self._ignore_attributes = []
         self.format = Format.new
       end
 
@@ -44,6 +46,10 @@ module GoogleSpreadsheets
             define_method(new_attr) {|*args| send(original_attr, *args) }
             define_method("#{new_attr}=") {|*args| send("#{original_attr}=", *args) }
           end
+        end
+
+        def ignore_column(*column_names)
+          self._ignore_attributes += column_names.map(&:to_s)
         end
       end
 
@@ -56,7 +62,7 @@ module GoogleSpreadsheets
             nil
           end
         end.compact
-        (self.class.known_attributes + gsx_attributes).uniq
+        (self.class.known_attributes + gsx_attributes - self.class._ignore_attributes).uniq
       end
 
       def respond_to?(method, include_priv = false)
