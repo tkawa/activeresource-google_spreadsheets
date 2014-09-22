@@ -39,7 +39,7 @@ module GoogleSpreadsheets
 
       module ClassMethods
         def attr_aliases(aliases)
-          self._attr_aliases.merge!(aliases)
+          self._attr_aliases = self._attr_aliases.merge(aliases) # not share parent class attrs
           aliases.each do |new_attr, original_attr|
             define_method(new_attr) {|*args| send(original_attr, *args) }
             define_method("#{new_attr}=") {|*args| send("#{original_attr}=", *args) }

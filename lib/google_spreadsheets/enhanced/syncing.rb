@@ -23,7 +23,7 @@ module GoogleSpreadsheets
           options[:worksheet_title] ||= rows_name.to_s
           options[:class_name] ||= rows_name.to_s.classify
           synchronizer = Synchronizer.new(self, options[:class_name].safe_constantize, options[:spreadsheet_id], options[:worksheet_title])
-          self.synchronizers.merge!(rows_name => synchronizer)
+          self.synchronizers = self.synchronizers.merge(rows_name => synchronizer) # not share parent class attrs
 
           # rows accessor
           define_singleton_method(rows_name) do
