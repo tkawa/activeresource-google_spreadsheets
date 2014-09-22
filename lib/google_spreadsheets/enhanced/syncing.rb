@@ -32,9 +32,9 @@ module GoogleSpreadsheets
           end
 
           # inbound sync all (import)
-          define_singleton_method("sync_with_#{rows_name}") do
+          define_singleton_method("sync_with_#{rows_name}") do |options = {}|
             synchronizer = self.synchronizers[rows_name]
-            synchronizer.sync_with_rows
+            synchronizer.sync_with_rows(options)
           end
 
           # outbound sync one (export)
@@ -66,12 +66,15 @@ module GoogleSpreadsheets
           end
         end
 
-        def sync_with_rows
+        def sync_with_rows(options)
           reset
           records = all_rows.map do |row|
             record_class.find_or_initialize_by(id: row.id).tap do |record|
               row.aliased_attributes.each do |attr|
-                record.send("#{attr}=", row.send(attr))
+                value = row.send(attr)
+                if options[:include_blank] || value.present?
+                  record.send("#{attr}=", value)
+                end
               end
             end
           end
