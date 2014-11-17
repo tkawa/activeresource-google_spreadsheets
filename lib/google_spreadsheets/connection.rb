@@ -9,7 +9,7 @@ module GoogleSpreadsheets
     end
 
     def access_token
-      @password.is_a?(Proc) ? @password.call : @password
+      @password.respond_to?(:call) ? @password.call(self) : @password
     end
 
     # Deprecated and Not recommended

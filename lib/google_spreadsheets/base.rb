@@ -4,6 +4,16 @@ module GoogleSpreadsheets
     self.format = GDataFormat.new
 
     class << self
+      # Avoid dup & freeze
+      def password
+        if defined?(@password)
+          @password
+        elsif superclass != Object && superclass.password
+          superclass.password
+        end
+      end
+
+      # Inherit from superclass
       def auth_type
         if defined?(@auth_type)
           @auth_type
@@ -27,6 +37,7 @@ module GoogleSpreadsheets
       def connection(refresh = false)
         if defined?(@connection) || self == Base
           @connection = Connection.new(site, format) if refresh || @connection.nil?
+          @connection.proxy = proxy if proxy
           @connection.user = user if user
           @connection.password = password if password
           @connection.auth_type = auth_type if auth_type
@@ -36,6 +47,7 @@ module GoogleSpreadsheets
           superclass.connection
         end
       end
+
       def element_path(id, prefix_options = {}, query_options = nil)
         prefix_options, query_options = split_options(prefix_options) if query_options.nil?
         "/feeds/#{collection_name}#{prefix(prefix_options)}#{id}#{query_string(query_options)}"

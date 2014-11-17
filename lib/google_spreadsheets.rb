@@ -16,6 +16,7 @@ module GoogleSpreadsheets
 
   autoload :Enhanced
   autoload :LinkRelations
+  autoload :Auth
 
   class BaseError < StandardError
     DefaultMessage = nil
