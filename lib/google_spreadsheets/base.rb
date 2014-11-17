@@ -1,14 +1,35 @@
 module GoogleSpreadsheets
   class Base < ActiveResource::Base
-    self.site   = 'http://spreadsheets.google.com/'
+    self.site   = 'https://spreadsheets.google.com/'
     self.format = GDataFormat.new
 
     class << self
+      def auth_type
+        if defined?(@auth_type)
+          @auth_type
+        elsif superclass != Object && superclass.auth_type
+          superclass.auth_type
+        end
+      end
+
+      def access_token=(access_token)
+        self.password = access_token
+      end
+
+      def access_token(&block)
+        if block_given?
+          self.password = block
+        else
+          password
+        end
+      end
+
       def connection(refresh = false)
         if defined?(@connection) || self == Base
           @connection = Connection.new(site, format) if refresh || @connection.nil?
           @connection.user = user if user
           @connection.password = password if password
+          @connection.auth_type = auth_type if auth_type
           @connection.timeout = timeout if timeout
           @connection
         else
