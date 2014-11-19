@@ -70,17 +70,28 @@ module GoogleSpreadsheets
           reset
           records = all_rows.map do |row|
             record_class.find_or_initialize_by(id: row.id).tap do |record|
-              row.aliased_attributes.each do |attr|
-                value = row.send(attr)
-                if options[:include_blank] || value.present?
-                  record.send("#{attr}=", value)
+              if row.all_values_empty?
+                # Due to destroy if exists
+                record.instance_variable_set(:@due_to_destroy, true)
+              else
+                row.aliased_attributes.each do |attr|
+                  value = row.send(attr)
+                  if options[:include_blank] || value.present?
+                    record.send("#{attr}=", value)
+                  end
                 end
               end
             end
           end
           skipping_outbound_sync_of(records) do |records_with_skipped_outbound|
             transaction_if_possible(record_class) do
-              records_with_skipped_outbound.each(&:save)
+              records_with_skipped_outbound.each do |record|
+                if record.instance_variable_get(:@due_to_destroy)
+                  record.destroy
+                else
+                  record.save
+                end
+              end
             end
           end
         end

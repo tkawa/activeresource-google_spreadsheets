@@ -65,6 +65,10 @@ module GoogleSpreadsheets
         (self.class.known_attributes + gsx_attributes - self.class._ignore_attributes).uniq
       end
 
+      def all_values_empty?
+        self.attributes.select{|k, v| k.to_s.start_with?('gsx:') && k.to_s != 'gsx:id' }.values.all?{|v| v == '' }
+      end
+
       def respond_to?(method, include_priv = false)
         method_name = method.to_s
         ((matches = method_name.match(/(=|\?)$/)) && attributes.include?("gsx:#{matches.pre_match}")) ||
