@@ -19,10 +19,12 @@ module GoogleSpreadsheets
         #                         worksheet_title: 'users'
         #   after_commit :sync_user_row
         def sync_with(rows_name, options)
-          options.assert_valid_keys(:spreadsheet_id, :worksheet_title, :class_name)
-          options[:worksheet_title] ||= rows_name.to_s
-          options[:class_name] ||= rows_name.to_s.classify
-          synchronizer = Synchronizer.new(self, options[:class_name].safe_constantize, options[:spreadsheet_id], options[:worksheet_title])
+          options.assert_valid_keys(:spreadsheet_id, :worksheet_title, :class_name, :assigner, :include_blank)
+          opts = options.dup
+          spreadsheet_id = opts.delete(:spreadsheet_id)
+          worksheet_title = opts.delete(:worksheet_title) || rows_name.to_s
+          class_name = opts.delete(:class_name) || rows_name.to_s.classify
+          synchronizer = Synchronizer.new(self, class_name.safe_constantize, spreadsheet_id, worksheet_title, opts)
           self.synchronizers = self.synchronizers.merge(rows_name => synchronizer) # not share parent class attrs
 
           # rows accessor
@@ -32,9 +34,9 @@ module GoogleSpreadsheets
           end
 
           # inbound sync all (import)
-          define_singleton_method("sync_with_#{rows_name}") do |options = {}|
+          define_singleton_method("sync_with_#{rows_name}") do
             synchronizer = self.synchronizers[rows_name]
-            synchronizer.sync_with_rows(options)
+            synchronizer.sync_with_rows
           end
 
           # outbound sync one (export)
@@ -48,11 +50,12 @@ module GoogleSpreadsheets
       class Synchronizer
         attr_reader :record_class, :row_class, :spreadsheet_id, :worksheet_title
 
-        def initialize(record_class, row_class, spreadsheet_id, worksheet_title)
+        def initialize(record_class, row_class, spreadsheet_id, worksheet_title, options = {})
           @record_class = record_class
           @row_class = row_class || default_class_for(REL_NAME_ROW)
           @spreadsheet_id = spreadsheet_id
           @worksheet_title = worksheet_title
+          @options = options
         end
 
         def all_rows
@@ -66,20 +69,22 @@ module GoogleSpreadsheets
           end
         end
 
-        def sync_with_rows(options)
+        def sync_with_rows
           reset
           records = all_rows.map do |row|
             record_class.find_or_initialize_by(id: row.id).tap do |record|
               if row.all_values_empty?
                 # Due to destroy if exists
                 record.instance_variable_set(:@due_to_destroy, true)
+                next
+              end
+
+              row_attributes = Hash[row.aliased_attributes.map{|attr| [attr, row.send(attr)] }]
+              row_attributes.reject!{|_, v| v.blank? } unless @options[:include_blank]
+              if @options[:assigner]
+                record.send(@options[:assigner], row_attributes)
               else
-                row.aliased_attributes.each do |attr|
-                  value = row.send(attr)
-                  if options[:include_blank] || value.present?
-                    record.send("#{attr}=", value)
-                  end
-                end
+                assign_row_attributes(record, row_attributes)
               end
             end
           end
@@ -126,8 +131,15 @@ module GoogleSpreadsheets
         end
 
         private
+
         def default_class_for(rel_name)
           LinkRelations.class_name_mappings[rel_name].classify.constantize
+        end
+
+        def assign_row_attributes(record, row_attributes)
+          row_attributes.each do |attr, value|
+            record.public_send("#{attr}=", value)
+          end
         end
 
         def transaction_if_possible(origin = self, &block)
