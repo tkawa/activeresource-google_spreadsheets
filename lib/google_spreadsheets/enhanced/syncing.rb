@@ -71,24 +71,25 @@ module GoogleSpreadsheets
 
         def sync_with_rows
           reset
-          records = all_rows.map do |row|
-            record_class.find_or_initialize_by(id: row.id).tap do |record|
-              if row.all_values_empty?
-                # Due to destroy if exists
-                record.instance_variable_set(:@due_to_destroy, true)
-                next
-              end
-
-              row_attributes = Hash[row.aliased_attributes.map{|attr| [attr, row.send(attr)] }]
-              row_attributes.reject!{|_, v| v.blank? } unless @options[:include_blank]
-              if @options[:assigner]
-                record.send(@options[:assigner], row_attributes)
-              else
-                assign_row_attributes(record, row_attributes)
-              end
+          records_to_save = {}
+          all_rows.each do |row|
+            record_id = row.id.to_i
+            record = records_to_save[record_id] || record_class.find_or_initialize_by(id: record_id)
+            if row.all_values_empty?
+              # Due to destroy if exists
+              record.instance_variable_set(:@due_to_destroy, true)
+              next
             end
+            row_attributes = Hash[row.aliased_attributes.map{|attr| [attr, row.send(attr)] }]
+            row_attributes.reject!{|_, v| v.blank? } unless @options[:include_blank]
+            if @options[:assigner]
+              record.send(@options[:assigner], row_attributes)
+            else
+              assign_row_attributes(record, row_attributes)
+            end
+            records_to_save[row.id.to_i] = record
           end
-          skipping_outbound_sync_of(records) do |records_with_skipped_outbound|
+          skipping_outbound_sync_of(records_to_save.values) do |records_with_skipped_outbound|
             transaction_if_possible(record_class) do
               records_with_skipped_outbound.each do |record|
                 if record.instance_variable_get(:@due_to_destroy)
