@@ -78,6 +78,7 @@ module GoogleSpreadsheets
             if row.all_values_empty?
               # Due to destroy if exists
               record.instance_variable_set(:@due_to_destroy, true)
+              records_to_save[row.id.to_i] = record
               next
             end
             row_attributes = Hash[row.aliased_attributes.map{|attr| [attr, row.send(attr)] }]
