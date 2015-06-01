@@ -19,7 +19,7 @@ module GoogleSpreadsheets
         #                         worksheet_title: 'users'
         #   after_commit :sync_user_row
         def sync_with(rows_name, options)
-          options.assert_valid_keys(:spreadsheet_id, :worksheet_title, :class_name, :assigner, :include_blank)
+          options.assert_valid_keys(:spreadsheet_id, :worksheet_title, :class_name, :assigner, :include_blank, :ignore_blank_id)
           opts = options.dup
           spreadsheet_id = opts.delete(:spreadsheet_id)
           worksheet_title = opts.delete(:worksheet_title) || rows_name.to_s
@@ -73,12 +73,19 @@ module GoogleSpreadsheets
           reset
           records_to_save = {}
           all_rows.each do |row|
-            record_id = row.id.to_i
-            record = records_to_save[record_id] || record_class.find_or_initialize_by(id: record_id)
+            if row.id.present?
+              record_id = row.id.to_i
+              record = records_to_save[record_id] || record_class.find_or_initialize_by(id: record_id)
+            elsif !@options[:ignore_blank_id]
+              record_id = SecureRandom.hex(8) # dummy id
+              record = record_class.new
+            else
+              next
+            end
             if row.all_values_empty?
               # Due to destroy if exists
-              record.instance_variable_set(:@due_to_destroy, true)
-              records_to_save[row.id.to_i] = record
+              record.mark_for_destruction
+              records_to_save[record_id] = record
               next
             end
             row_attributes = Hash[row.aliased_attributes.map{|attr| [attr, row.send(attr)] }]
@@ -88,12 +95,12 @@ module GoogleSpreadsheets
             else
               assign_row_attributes(record, row_attributes)
             end
-            records_to_save[row.id.to_i] = record
+            records_to_save[record_id] = record
           end
           skipping_outbound_sync_of(records_to_save.values) do |records_with_skipped_outbound|
             transaction_if_possible(record_class) do
               records_with_skipped_outbound.each do |record|
-                if record.instance_variable_get(:@due_to_destroy)
+                if record.marked_for_destruction?
                   record.destroy
                 else
                   record.save
