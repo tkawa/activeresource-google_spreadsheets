@@ -90,8 +90,12 @@ module GoogleSpreadsheets
             end
             row_attributes = Hash[row.aliased_attributes.map{|attr| [attr, row.send(attr)] }]
             row_attributes.reject!{|_, v| v.blank? } unless @options[:include_blank]
-            if @options[:assigner]
-              record.send(@options[:assigner], row_attributes)
+            if assigner = @options[:assigner]
+              if assigner.is_a?(Proc)
+                record.instance_exec(row_attributes, &assigner)
+              else
+                record.send(assigner, row_attributes)
+              end
             else
               assign_row_attributes(record, row_attributes)
             end
