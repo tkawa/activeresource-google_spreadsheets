@@ -18,12 +18,13 @@ module GoogleSpreadsheets
         #   sync_with :user_rows, spreadsheet_id: 'xxxx',
         #                         worksheet_title: 'users'
         #   after_commit :sync_user_row
-        def sync_with(rows_name, options)
+        def sync_with(rows_name, scope = nil, options)
           options.assert_valid_keys(:spreadsheet_id, :worksheet_title, :class_name, :assigner, :include_blank, :ignore_blank_id)
           opts = options.dup
           spreadsheet_id = opts.delete(:spreadsheet_id)
           worksheet_title = opts.delete(:worksheet_title) || rows_name.to_s
           class_name = opts.delete(:class_name) || rows_name.to_s.classify
+          opts[:scope] = scope
           synchronizer = Synchronizer.new(self, class_name.safe_constantize, spreadsheet_id, worksheet_title, opts)
           self.synchronizers = self.synchronizers.merge(rows_name => synchronizer) # not share parent class attrs
 
@@ -60,19 +61,26 @@ module GoogleSpreadsheets
 
         def all_rows
           reflections = worksheet.class.reflections.values.find_all{|ref| ref.is_a?(LinkRelations::LinkRelationReflection) }
-          if reflection = reflections.find{|ref| ref.klass == row_class }
-            worksheet.send(reflection.name)
-          elsif reflection = reflections.find{|ref| ref.options[:rel] == REL_NAME_ROW }
-            worksheet.send(reflection.name, as: row_class.to_s)
-          else
-            raise "Reflection for #{row_class.to_s} not found."
+          collection =
+            if reflection = reflections.find{|ref| ref.klass == row_class }
+              worksheet.send(reflection.name)
+            elsif reflection = reflections.find{|ref| ref.options[:rel] == REL_NAME_ROW }
+              worksheet.send(reflection.name, as: row_class.to_s)
+            else
+              raise "Reflection for #{row_class.to_s} not found."
+            end
+          if @options[:scope]
+            collection = collection.instance_exec(&@options[:scope])
           end
+          collection
         end
 
-        def sync_with_rows
+        def sync_with_rows(scope = nil)
           reset
           records_to_save = {}
-          all_rows.each do |row|
+          rows = all_rows
+          rows = rows.instance_exec(&scope) if scope
+          rows.each do |row|
             if row.id.present?
               record_id = row.id.to_i
               record = records_to_save[record_id] || record_class.find_or_initialize_by(id: record_id)

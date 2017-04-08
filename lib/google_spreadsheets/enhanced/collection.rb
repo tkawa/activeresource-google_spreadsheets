@@ -24,8 +24,12 @@ module GoogleSpreadsheets
       end
 
       def where(condition_hash)
-        condition_hash.inject(self.to_a) do |array, (attr, value)|
+        conditioned_elements = condition_hash.inject(self.to_a) do |array, (attr, value)|
           array.find_all{|element| element.send(attr) == value }
+        end
+        self.class.new(conditioned_elements).tap do |collection|
+          collection.resource_class  = self.resource_class
+          collection.original_params = self.original_params
         end
       end
     end
