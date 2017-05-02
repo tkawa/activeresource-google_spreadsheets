@@ -10,7 +10,7 @@ module GoogleSpreadsheets
               { :namespaces => { 'gsx' => 'http://schemas.google.com/spreadsheets/2006/extended' } })
       end
     end
-    @connection = nil # avoid using base class's connection.
+    self._connection = nil # avoid using base class's connection.
     self.prefix = '/:document_id/:worksheet_id/:visibility/:projection/'
     self.format = Format.new
     def self.collection_name; 'list' end

@@ -4,10 +4,10 @@ module GoogleSpreadsheets
     self.format = GDataFormat.new
 
     class << self
-      # Avoid dup & freeze
+      # Avoid dup & freeze because of possible replacing with OAuth access token
       def password
-        if defined?(@password)
-          @password
+        if _password_defined?
+          _password
         elsif superclass != Object && superclass.password
           superclass.password
         end
@@ -34,15 +34,19 @@ module GoogleSpreadsheets
         end
       end
 
+      # Use GoogleSpreadsheets::Connection instead of ActiveResource::Connection
       def connection(refresh = false)
-        if defined?(@connection) || self == Base
-          @connection = Connection.new(site, format) if refresh || @connection.nil?
-          @connection.proxy = proxy if proxy
-          @connection.user = user if user
-          @connection.password = password if password
-          @connection.auth_type = auth_type if auth_type
-          @connection.timeout = timeout if timeout
-          @connection
+        if _connection_defined? || self == GoogleSpreadsheets::Base
+          self._connection = GoogleSpreadsheets::Connection.new(site, format) if refresh || _connection.nil?
+          _connection.proxy = proxy if proxy
+          _connection.user = user if user
+          _connection.password = password if password
+          _connection.auth_type = auth_type if auth_type
+          _connection.timeout = timeout if timeout
+          _connection.open_timeout = open_timeout if open_timeout
+          _connection.read_timeout = read_timeout if read_timeout
+          _connection.ssl_options = ssl_options if ssl_options
+          _connection
         else
           superclass.connection
         end

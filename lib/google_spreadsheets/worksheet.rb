@@ -12,7 +12,7 @@ module GoogleSpreadsheets
         e['colCount'] = e['colCount'].to_i if e.has_key?('colCount')
       end
     end
-    @connection = nil # avoid using base class's connection.
+    self._connection = nil # avoid using base class's connection.
     self.prefix = '/:document_id/:visibility/:projection/'
     self.format = Format.new
     def self.collection_name; 'worksheets' end
